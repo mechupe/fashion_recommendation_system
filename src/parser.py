@@ -73,6 +73,7 @@ def parse_page(num_page, gender, main_link):
                 card_label += 1
 
 
-for i in range(1, 51):
+for i in range(1, 151):
     parse_page(i, 'MEN', main_link_man, )
     parse_page(i, 'WOMEN', main_link_woman)
+    print(i)
