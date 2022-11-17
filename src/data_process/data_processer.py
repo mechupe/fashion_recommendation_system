@@ -7,7 +7,14 @@ import json
 background_threshold = 40
 
 
-def count_colors(image_path):
+def count_colors(image_path) -> Counter:
+    """Count pixels of the image.
+
+    :param image_path: path of the image
+    :type image_path: str
+
+    :return: colors_count, Counter dict with counts of each pixel count in image
+    """
     image = cv2.imread(image_path)
     # Splits image Mat into 3 color channels in individual 2D arrays
     (channel_b, channel_g, channel_r) = cv2.split(image)
@@ -24,9 +31,18 @@ def count_colors(image_path):
     return colors_count
 
 
-def percentile_colors(image_path):
+def percentile_colors(image_path) -> list:
+    """Create list of most_common pixels in image.
+
+    :param image_path: path of the image
+    :type image_path: str
+
+    :return: majority_pixels, list of (r ,g, b) channels of most common pixels im image
+    """
     counts_colors = count_colors(image_path).most_common()
+    # Create separate list only with counts of pixels
     counts = [count[1] for count in counts_colors]
+    # Transform values from counts list to list of percents
     perc_counts = [count / sum(counts) for count in counts]
 
     iterator = 0
@@ -37,11 +53,18 @@ def percentile_colors(image_path):
             summator += percent * 100
             iterator += 1
         else:
-            return [rgb for rgb, count in counts_colors[:iterator]]
+            majority_pixels = [rgb for rgb, count in counts_colors[:iterator]]
+            return majority_pixels
 
 
-def background_pixels_define(data_path, threshold, ):
+def background_pixels_define(data_path, threshold):
+    """Find all images in directory and save most common pixels of each image in file
 
+    :param data_path: path to folders with sex and categories
+    :type data_path: str
+    :param threshold: how many percent of image background may be (configured)
+    :type threshold: int
+    """
     os.chdir(data_path)
     # We count images in order to stop loop when limit the threshold
     counter = 0
@@ -54,8 +77,8 @@ def background_pixels_define(data_path, threshold, ):
         categories = os.listdir(os.getcwd())
         # Go to category of clothes
         for category in categories:
-            categoties_path = os.getcwd()
-            os.chdir(categoties_path + f'\\{category}')
+            categories_path = os.getcwd()
+            os.chdir(categories_path + f'\\{category}')
             images = os.listdir(os.getcwd())
             # Go to image
             for image in images:
@@ -69,7 +92,7 @@ def background_pixels_define(data_path, threshold, ):
                 # Reset counter and go to the next gender dir
                 counter = 0
                 break
-            os.chdir(categoties_path)
+            os.chdir(categories_path)
         os.chdir(sex_path)
     # Count most common pixels and save info to the file
     backgrounds = Counter(most_pixels)
@@ -78,8 +101,8 @@ def background_pixels_define(data_path, threshold, ):
         json.dump(backgrounds, file)
 
 
-#if __name__ == "__main__":
-
+if __name__ == "__main__":
+    print(count_colors('17357.jpg'))
 
 # if __name__ == '__main__':
 #     src = cv2.imread('3757.jpg')
