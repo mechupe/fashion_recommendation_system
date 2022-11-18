@@ -2,6 +2,8 @@ import os
 from collections import Counter
 import cv2
 import json
+import re
+import numpy as np
 
 # Find background colors
 background_threshold = 40
@@ -97,12 +99,41 @@ def background_pixels_define(data_path, threshold):
     # Count most common pixels and save info to the file
     backgrounds = Counter(most_pixels)
     with open('backgrounds.json', 'w') as file:
-        backgrounds = json.dumps({str(k): backgrounds[k] for k in backgrounds})
-        json.dump(backgrounds, file)
+        backgrounds = {str(k): backgrounds[k] for k in backgrounds}
+        backgrounds_js = json.dumps(backgrounds)
+        json.dump(backgrounds_js, file)
+    with open('pixels_percentage.json', 'w') as f:
+        background_perc_dict = {key: value / sum(backgrounds.values()) for key, value in backgrounds.items()}
+        pixels_perc = json.dumps(background_perc_dict)
+        json.dump(pixels_perc, file)
 
 
 if __name__ == "__main__":
-    print(count_colors('17357.jpg'))
+    with open('pixels_percentage.json') as f:
+        pix_perc_str = json.load(f)
+        pix_perc_dict = json.loads(pix_perc_str)
+        pix_perc_dict = dict(sorted(pix_perc_dict.items(), key=lambda item: item[1], reverse=True))
+
+        iterator = 0
+        summator = 0
+
+        for pixel, count in pix_perc_dict.items():
+            if summator < background_threshold:
+                summator += count * 100
+                iterator += 1
+            else:
+                background_pixels = []
+                for pixel, part in list(pix_perc_dict.items())[:iterator]:
+                    rgb = list(map(lambda x: int(x), re.findall(r'\d+', pixel)))
+                    if sum(np.array(rgb) >= 220) == 3:
+                        rgb_list = pixel.split(',')
+                        pixel = list(map(int, [rgb_list[0][1:], rgb_list[1][1:], rgb_list[2][1:-1]]))
+                        background_pixels.append(pixel)
+                break
+
+
+    # print([(int(i[1:]), int(x), int(j[:-1])) for i, x, j in '(233, 233, 233)'.split(' ,')])
+    # print('(233, 233, 233)'.split(','))
 
 # if __name__ == '__main__':
 #     src = cv2.imread('3757.jpg')
