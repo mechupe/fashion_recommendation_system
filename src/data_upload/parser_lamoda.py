@@ -21,13 +21,13 @@ invalid_categories = ['Одежда', 'Аксессуары', 'Premium', 'Кра
 
 
 def selenium_parse(link):
-    '''Function, that goes to main page and
+    """Function, that goes to main page and
     parse html in order to take all categories links.
 
     :param link: clothes main page
     :return beautifulsoup page object
 
-    '''
+    """
     options = Options()
     options.add_argument(
         "user-agent=Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.87 Safari/537.36")

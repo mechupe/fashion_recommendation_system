@@ -135,7 +135,8 @@ if __name__ == "__main__":
     # print([(int(i[1:]), int(x), int(j[:-1])) for i, x, j in '(233, 233, 233)'.split(' ,')])
     # print('(233, 233, 233)'.split(','))
 
-# if __name__ == '__main__':
+if __name__ == '__main__':
+    print(percentile_colors('17357.jpg'))
 #     src = cv2.imread('3757.jpg')
 #     b, g, r = cv2.split(src)
 #
