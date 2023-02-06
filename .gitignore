@@ -1,3 +1,5 @@
 /venv
 /.idea
 /data
+/src/data_process/backgrounds.json
+/src/data_process/pixels_percentage.json
