@@ -9,6 +9,9 @@ import time
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 import json
+from tqdm import tqdm
+import numpy as np
+from selenium.common.exceptions import NoSuchWindowException
 
 # Headers to go to web
 HEADERS = {
@@ -23,9 +26,9 @@ invalid_categories = ['Одежда', 'Аксессуары', 'Premium', 'Кра
 
 
 def element_click(driver, num_clicks, link_text):
-    driver.execute_script("window.scrollTo(0, 1000)")
+    driver.execute_script("window.scrollTo(0, 1700)")
     for _ in range(num_clicks):
-        time.sleep(3)
+        time.sleep(2)
         element = driver.find_element(By.LINK_TEXT, link_text).click()
 
 def selenium_parse(link, uncover=False):
@@ -37,6 +40,7 @@ def selenium_parse(link, uncover=False):
 
     """
     options = Options()
+    options.headless = True
     options.add_argument(
         "user-agent=Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.87 Safari/537.36")
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()),
@@ -44,7 +48,7 @@ def selenium_parse(link, uncover=False):
     try:
         driver.get(link)
         if uncover:
-            time.sleep(3)
+            time.sleep(2)
             link_text = 'Подробнее'
             num_elements = len(driver.find_elements(By.LINK_TEXT, link_text))
             element_click(driver=driver, num_clicks=num_elements-1, link_text=link_text)
@@ -56,7 +60,7 @@ def selenium_parse(link, uncover=False):
         driver.quit()
 
 
-def parse_page(gender, main_link, left_boundary, right_boundary, picture_num_start):
+def parse_page(gender, main_link, left_boundary, right_boundary):
     """Function, which download clothes images from lamoda.ru
     in particular page range and categories.
 
@@ -72,41 +76,50 @@ def parse_page(gender, main_link, left_boundary, right_boundary, picture_num_sta
     categories = selenium_parse(main_link).find_all('a', class_='_root_clp6c_2 _label_clp6c_17 _link_ki68p_27 _link_ki68p_27')
     json_list = []
     # Choose page number from range
-    for page_number in range(left_boundary, right_boundary):
-        for category in categories:
-            # try:
-                if category.text not in invalid_categories:
-                    # Go to category on needed page
-                    clothes_url = 'https://www.lamoda.ru' + category.get('href') + '?page=' + str(page_number)
-                    response = requests.get(clothes_url, headers=HEADERS, timeout=100)
-                    soap = bs(response.text, 'html.parser')
-                    cards = soap.find_all('div', class_='x-product-card__card')
-                    labels_soap = soap.find_all('div', class_='x-product-card-description__product-name')
-                    # Labels of clothes
-                    labels = [label.text.split(' ')[1] for label in labels_soap]
-                    card_label = 0
-                    for card in cards:
-                        data_dir = f'..\..\data\{gender}\{labels[card_label]}'
-                        if not os.path.exists(data_dir):
-                            os.makedirs(data_dir)
-                        # Go to card
-                        print(card.find_next().get('href'))
-                        url = 'https://www.lamoda.ru/' + card.find_next().get('href')
+    for page_number in tqdm(range(left_boundary, right_boundary)):
+        for category in tqdm(categories):
+            if category.text not in invalid_categories:
+                # Go to category on needed page
+                clothes_url = 'https://www.lamoda.ru' + category.get('href') + '?page=' + str(page_number)
+                response = requests.get(clothes_url, headers=HEADERS, timeout=100)
+                soap = bs(response.text, 'html.parser')
+                cards = soap.find_all('div', class_='x-product-card__card')
+                labels_soap = soap.find_all('div', class_='x-product-card-description__product-name')
+                # Labels of clothes
+                labels = [label.text.split(' ')[1] for label in labels_soap]
+                card_label = 0
+                for card in tqdm(cards):
+                    data_dir = f'..\..\data\{gender}\{labels[card_label]}'
+                    if not os.path.exists(data_dir):
+                        os.makedirs(data_dir)
+                    # Go to card
+                    url = 'https://www.lamoda.ru/' + card.find_next().get('href')
+                    try:
                         card_info = selenium_parse(url, uncover=True)
-                        card_images = card_info.find_all('img', class_='_root_1wiwn_3 _image_uhouy_54 _image_uhouy_54')
 
-                        card_metainfo = card_info.find_all('span', class_='_attributeName_ajirn_14')
-                        card_metainfo_data = card_info.find_all('span', class_='_value_ajirn_27')
-                        metainfo_dict = {key.text: value.text for key, value in zip(card_metainfo, card_metainfo_data)}
-                        card_description = card_info.find('div', class_='_description_1ga1h_20')
-                        card_subclass = card_info.find_all('a', class_='_root_clp6c_2 _secondaryLabel_clp6c_13')[-1].text _root_clp6c_2 _secondaryLabel_clp6c_13
-                        metainfo_dict['card_subclass'] = card_subclass
+                        if card_info:
+                            card_images = card_info.find_all('img', class_='_root_1wiwn_3 _image_uhouy_54 _image_uhouy_54')
+
+                            card_metainfo = card_info.find_all('span', class_='_attributeName_ajirn_14')
+                            card_metainfo_data = card_info.find_all('span', class_='_value_ajirn_27')
+                            metainfo_dict = {key.text: value.text for key, value in zip(card_metainfo, card_metainfo_data)}
+                            card_description = card_info.find('div', class_='_description_1ga1h_20')
+                        else:
+                            with open('..\..\data\logger.txt', 'a') as file:
+                                msg = f"{url} hasn't been parsed\n"
+                                file.write(msg)
+                                continue
+                        try:
+                            card_subclass = card_info.find_all('a', class_='_root_clp6c_2 _secondaryLabel_clp6c_13')[-1].text
+                            metainfo_dict['card_subclass'] = card_subclass
+                        except IndexError:
+                            metainfo_dict['card_subclass'] = np.nan
 
                         if card_description:
                             metainfo_dict['description'] = card_description.find_next().text
 
                         json_list.append(metainfo_dict)
-                        with open('..\..\data\metainfo.json', 'w', encoding='utf-8') as file:
+                        with open('..\..\data\metainfo_2.json', 'w', encoding='utf-8') as file:
                             metainfo_dict_json = json.dump(json_list,
                                                            file,
                                                            ensure_ascii=False)
@@ -120,17 +133,12 @@ def parse_page(gender, main_link, left_boundary, right_boundary, picture_num_sta
                             with open(f'{str(data_dir).rstrip()}\\{metainfo_dict["Артикул"]}_{photo_num}.jpg', "wb") as data_image:
                                 data_image.write(r.content)
                             photo_num += 1
-                            picture_num_start += 1
                         card_label += 1
-
-
-
-
-
-            # except:
-            #     print(f'Категория - {category}')
-            #     print(f'Номер страницы - {page_number}')
-            #     print(f'Номер картинки {picture_num_start}')
+                    except NoSuchWindowException:
+                        with open('..\..\data\logger.txt', 'a') as file:
+                            msg = f"{url} hasn't been parsed\n"
+                            file.write(msg)
+                        continue
 
 
 
@@ -140,4 +148,4 @@ def parse_page(gender, main_link, left_boundary, right_boundary, picture_num_sta
 # for category in categories:
 #     print(category.get('href'))
 # print(len(categories))
-parse_page('Women', main_link_woman, left_boundary=1, right_boundary=100, picture_num_start=0)
+parse_page('Women', main_link_woman, left_boundary=1, right_boundary=100)
