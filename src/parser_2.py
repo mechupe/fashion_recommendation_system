@@ -157,4 +157,4 @@ def parse_page(gender, main_link, left_boundary, right_boundary):
 # for category in categories:
 #     print(category.get('href'))
 # print(len(categories))
-parse_page('Women', main_link_woman, left_boundary=1, right_boundary=100)
+parse_page('Women', main_link_woman, left_boundary=20, right_boundary=100)
